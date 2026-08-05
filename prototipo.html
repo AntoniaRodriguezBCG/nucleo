@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Núcleo Intersetorial do Clima — Protótipo de fluxo único</title>
+
+<!--
+============================================================
+PROTÓTIPO DE FLUXO ÚNICO — não é a reintegração final
+============================================================
+Este arquivo NÃO é o resultado do processo formal descrito no
+GUIA_REINTEGRACAO_FINAL.md (que exige workbench aprovado + relatório final
+por item, um por vez). Nenhum dos 18 workbenches está aprovado ainda. Este é
+um artefato paralelo: um protótipo enxuto, novo arquivo, que amarra 8 dos 18
+workbenches em UM fluxo de cards clicável de ponta a ponta, usando dado real
+da alavanca ALV_TRA_4 (planilha "para_o_claude_04_08.xlsx").
+
+FLUXOS CLICÁVEIS (2):
+1. Panorama → Setor Transporte → Modal Rodoviário → Macro-tema
+   Biocombustíveis → Alavanca "Aumento do uso do etanol" (tripé) → cada
+   Indicador de Sucesso/Preditivo em TELA PRÓPRIA isolada; Habilitadores
+   → Ação também navega para tela própria.
+2. Panorama → Vetor Transversal Biocombustíveis → 1 Ação (dentro do
+   grupo "Infraestrutura logística") navega para a MESMA tela de Ação
+   do fluxo 1.
+
+Todo o resto (outros 4 setores, outros modais/macro-temas/alavancas de
+Transporte, as outras 10 ações do vetor Biocombustíveis, o vetor
+Eletrificação) permanece VISÍVEL nos cards — P7 do CLAUDE.md exige
+comparação antes do detalhe — mas SEM navegação real. Um clique nesses
+cards mostra um aviso não-intrusivo (toast), em vez do alert() de debug
+usado nos workbenches isolados.
+
+REVISÃO 2 (pedidos do usuário, sessão anterior):
+1. Indicadores de Sucesso e Preditivos deixaram de expandir inline dentro do
+   Detalhe — passaram a abrir numa tela própria (tentativa 1: lista por tipo).
+2. Selo "Resultado"/"Antecipação" removido dos indicadores.
+3. Status on_track/off_track/insufficient_data (chip/bolinha) removido de
+   Setor, Modal/Bloco, Macro-tema e Panorama. Só aparece em dois lugares:
+   o painel "Balanço" da tela da alavanca (abaixo do título) e nos próprios
+   Indicadores de Sucesso (card no tripé e tela própria). Indicadores
+   Preditivos nunca tiveram chip. O selo de fase/sub-nível das Ações
+   (Concepção/Mobilização/Execução) é um sistema diferente e não foi
+   afetado por este pedido.
+
+REVISÃO 3 (correção do usuário, sessão anterior):
+A "tela própria" da Revisão 2 ainda errava — ela listava TODOS os
+indicadores do mesmo tipo juntos (Coluna). Corrigido: cada indicador tem
+sua PRÓPRIA página isolada (renderIndicador), sem nenhum outro indicador
+junto. Só o card individual no tripé navega agora; o cabeçalho da coluna
+Sucesso/Preditivo deixou de ser clicável (não há mais "ver todos"). O
+cabeçalho de Habilitadores continua clicável, mas só rola a tela até a
+coluna — não navega (Ações continuam com página própria via goAcao).
+Nessa mesma sessão, também foi feita uma limpeza de código morto
+(funções e dados que sobraram das revisões acima e nada mais chamava —
+ver comentários pontuais onde cada remoção aconteceu).
+
+REVISÃO 4 (pedido do usuário, nesta sessão) — segundo fluxo adicionado:
+Vetor Transversal Biocombustíveis (workbench 10 +
+"para_o_claude_04_08__vetor_transversal.xlsx"). A partir do Panorama, o
+card "Biocombustíveis" (vetores transversais) agora abre a página do
+vetor — hero com o texto final aprovado + 4 grupos de Habilitadores do
+Vetor (Infraestrutura logística, Compatibilidade de motor-combustível,
+Mecanismos para fomentar demanda, Cadeia de custódia), 11 ações ao todo.
+Só UMA ação é clicável de verdade — "Coordenar atores para construção de
+duto CO-SE..." (grupo Infraestrutura logística) — identificada na aba
+Habilitadores do novo Excel (única linha preenchida: vetor_transversal_
+nome=Biocombustíveis, habilitador 1/ação 1). etapa_acao e status vieram
+vazios de novo → mesmo padrão neutro já decidido (concepção/não
+iniciado). As outras 10 ações mostram toast ao clicar. cc_elet
+(Eletrificação) continua inteiramente fora do fluxo — não recebemos
+workbench nem dado real para ela.
+Reaproveitei a MESMA tela de Ação já construída (renderAcao ficou ciente
+de duas origens possíveis — alavanca ou vetor — mesmo componente visual).
+O sistema de status do workbench 10 (fase×ritmo com 10 combinações de
+cor) foi simplificado para o mesmo selo fase/sub-nível já usado em todo
+o resto do app (parseStatusKey traduz um pro outro), em vez de duplicar
+uma segunda linguagem visual de status só para essa tela.
+Teses do vetor (14, reais) e KPIs não entraram — a própria página de
+origem já não os renderiza (decisão anterior dela, não minha).
+
+DECISÕES CONFIRMADAS COM O USUÁRIO NESTA SESSÃO:
+1. Macro-tema real é Biocombustíveis (não Eletrificação, que era só o
+   exemplo fictício dos workbenches vetor-macrotema/detalhe-alavanca).
+2. As 4 Ações da aba Habilitadores pertencem todas à alavanca ALV_TRA_4
+   (o alavanca_id "ALV_TRA_001..004" da planilha anexada era erro de
+   digitação, corrigido pelo usuário na cópia que ele mantém).
+3. fase/subnível das Ações vieram vazios na planilha → renderizados com o
+   padrão neutro "Não iniciado" (subnível "pausado", fase "concepção").
+
+SIMPLIFICAÇÕES APLICADAS NESTE PROTÓTIPO (sinalizadas, nenhuma silenciosa):
+- Imagens de fundo (base64) dos heroes REMOVIDAS — cai no gradiente
+  fallback, já previsto pelos próprios workbenches como opção de
+  aliviar o arquivo.
+- buildWaterfallPotencial() (Panorama) e o gráfico waterfall de emissões
+  (Setor Transporte) foram trazidos de volta a pedido do usuário — só as
+  animações de entrada (keyframes/opacity/transform) foram cortadas, sem
+  perda de informação. As imagens de fundo em base64 continuam fora
+  (fotos, sem conteúdo informativo — diferente dos gráficos).
+- Vetores Transversais e os outros 4 setores econômicos usam os mesmos
+  dados agregados ilustrativos que já vinham no workbench panorama.html
+  (não são dado real, são só para os cards não ficarem vazios).
+- STATUS, avgStatus(), dominantStatus() preservados fielmente dos
+  workbenches originais, incluindo a peculiaridade já registrada como
+  D1/D2 no CLAUDE.md (insufficient_data conta como "pior" que
+  off_track_critical na média usada por avgStatus — não corrigido aqui,
+  é decisão pendente do projeto, não bug deste protótipo).
+- unidade_medida de cada indicador não é exibida em nenhum componente —
+  isso já era assim nos workbenches originais (o valor plota só no eixo
+  do gráfico), preservado fielmente.
+- Conversão %: indicadores 2 e 3 (mandato de mistura, venda de hidratado)
+  vinham como fração (0,32) → convertidos ×100 para exibição. Indicadores
+  8 e 9 (paridade de preço, variação do IC²) já vinham em pontos
+  percentuais (68,57 · 0,27) → exibidos como estão, sem conversão. Essa
+  leitura é uma inferência razoável, não confirmada linha a linha — se
+  algum desses dois grupos estiver com a escala errada, é o primeiro
+  lugar a checar.
+============================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+
+<style>
+/* ===== tema.css — tokens ===== */
+:root{
+  --navy:#211c63; --navy2:#2d2780; --green:#1fa638; --green2:#17892e;
+  --aqua:#3bbcaf; --aqua2:#2da098; --purple:#6b48d3;
+  --ink:#1a1a2e; --ink-soft:#4a4f6a; --ink-faint:#8890a8;
+  --line:#d4d8e8; --line-strong:#b8bfd6; --surface:#f4f5fa; --white:#ffffff;
+  --status-ok:#1fa638; --status-slow:#f0a500; --status-vslow:#e07000;
+  --status-wrong:#d03040; --status-nd:#8890a8; --r:8px;
+}
+*{ box-sizing:border-box; }
+body{ font-family:'DM Sans',system-ui,sans-serif; background:#0a1220; color:var(--ink); font-size:14px; line-height:1.5; margin:0; }
+#app{ max-width:1100px; margin:0 auto; padding:28px 24px 60px; }
+
+/* ===== breadcrumb ===== */
+.breadcrumb{ display:flex; align-items:center; gap:5px; flex-wrap:wrap; font-size:13px; margin-bottom:24px; background:rgba(255,255,255,.04); border-radius:8px; padding:8px 14px; }
+.bc-item{ color:#5dd87a; font-weight:600; cursor:pointer; padding:2px 4px; border-radius:4px; transition:.12s; }
+.bc-item:hover{ background:rgba(255,255,255,.06); text-decoration:underline; }
+.bc-sep{ color:rgba(255,255,255,.25); font-size:14px; }
+.bc-current{ color:rgba(255,255,255,.6); }
+
+/* ===== chip / sdot ===== */
+.chip{display:inline-flex;align-items:center;gap:5px;font-weight:600;border-radius:20px;font-size:12.5px;padding:5px 12px}
+.chip::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.7}
+.chip.on_track{background:rgba(31,166,56,.12);color:var(--status-ok)}
+.chip.off_track{background:rgba(240,165,0,.12);color:var(--status-slow)}
+.chip.off_track_critical{background:rgba(208,48,64,.1);color:var(--status-wrong)}
+.chip.insufficient_data{background:rgba(136,144,168,.1);color:var(--status-nd)}
+
+/* ===== cabeçalho de nível + título de seção ===== */
+.nivel-header{margin-bottom:22px}
+.nh-level{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:6px}
+.nivel-header h2{font-family:'Plus Jakarta Sans',sans-serif;font-size:30px;font-weight:800;color:#fff;letter-spacing:-.02em;line-height:1.15;margin:0 0 6px}
+.nh-sub{font-size:14px;color:rgba(255,255,255,.5);margin-top:6px}
+.unidade-badge{font-size:11px;font-weight:600;color:rgba(255,255,255,.6);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:3px 9px;white-space:nowrap}
+.ecno-section-title{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.7);margin-bottom:18px;margin-top:12px;display:flex;align-items:center;gap:8px}
+.ecno-section-title::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.15)}
+
+/* ===== grid de cards (macro-tema / modal) ===== */
+.tree-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-bottom:24px}
+.tree-card{background:#0d1625;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:22px 24px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:10px}
+.tree-card:hover{border-color:rgba(59,188,175,.4);transform:translateY(-2px)}
+.tree-card.disabled{cursor:not-allowed;filter:grayscale(.55);opacity:.7}
+.tc-level{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.35)}
+.tc-nome{font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:700;color:#fff;line-height:1.25}
+.tc-stats{display:flex;gap:6px;flex-wrap:wrap}
+.tc-stat{font-size:12px;color:rgba(255,255,255,.45);background:rgba(255,255,255,.06);padding:3px 10px;border-radius:4px;border:1px solid rgba(255,255,255,.08)}
+.tc-arrow{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:18px;color:rgba(255,255,255,.2)}
+.tc-tag-fora{position:absolute;top:12px;right:14px;font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.4);background:rgba(0,0,0,.3);padding:3px 7px;border-radius:4px}
+
+/* ===== lista de alavancas ===== */
+.alav-list{display:flex;flex-direction:column;gap:10px}
+.ali{background:#0d1625;border:1.5px solid rgba(255,255,255,.08);border-radius:var(--r);padding:18px 20px;cursor:pointer;transition:all .15s;display:flex;align-items:flex-start;gap:12px}
+.ali:hover{border-color:var(--aqua)}
+.ali.disabled{cursor:not-allowed;filter:grayscale(.55);opacity:.65}
+.ali-body{flex:1}
+.ali-nome{font-family:'Plus Jakarta Sans',sans-serif;font-size:15.5px;font-weight:700;color:#fff;margin-bottom:6px;line-height:1.3}
+.ali-arr{color:rgba(255,255,255,.3);font-size:18px;flex-shrink:0;align-self:center}
+.ali-tag{font-size:10.5px;color:rgba(255,255,255,.35)}
+
+/* ===== detail-header / balanço ===== */
+.detail-header{background:rgba(255,255,255,.04);border-radius:12px;padding:24px 28px;margin-bottom:20px;position:relative;overflow:hidden}
+.detail-header::before{content:'';position:absolute;top:0;left:0;width:5px;height:100%;background:var(--green)}
+.back-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);border-radius:6px;padding:6px 12px;font-size:12px;margin-bottom:14px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-family:inherit}
+.back-btn:hover{background:rgba(255,255,255,.18)}
+.detail-header h2{font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:700;color:#fff;margin:0;line-height:1.25}
+
+.detail-balance{background:rgba(255,255,255,.04);border-radius:12px;padding:18px 24px;margin-bottom:20px;display:flex;flex-direction:column;gap:14px}
+.bal-row{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.bal-row-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.45);flex-shrink:0;min-width:190px;padding-top:5px}
+.bal-chips{display:flex;flex-wrap:wrap;gap:8px;flex:1}
+.bal-item{cursor:pointer;display:inline-flex;border-radius:20px;transition:opacity .12s,transform .12s}
+.bal-item:hover{opacity:.82;transform:translateY(-1px)}
+.bal-empty{font-size:12px;color:rgba(255,255,255,.4);padding-top:4px}
+
+/* ===== tripé ===== */
+.tripe-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
+.tripe-col{border-radius:var(--r);overflow:hidden;border:1.5px solid var(--line);display:flex;flex-direction:column}
+.tripe-col.tc-sucesso{border-top:3px solid var(--navy)}
+.tripe-col.tc-preditivo{border-top:3px solid var(--green)}
+.tripe-col.tc-hab{border-top:3px solid var(--aqua)}
+.tripe-head{padding:16px 18px}
+.tripe-head.h-sucesso{background:var(--navy)}
+.tripe-head.h-preditivo{background:var(--green2)}
+.tripe-head.h-hab{background:#1e5f7a}
+.th-label{font-size:14px;font-weight:700;color:#fff;line-height:1.2}
+.tripe-body{padding:16px 18px;flex:1;display:flex;flex-direction:column;gap:10px;background:#fff}
+.kpi-tripe{background:var(--surface);border-radius:6px;padding:10px 12px;cursor:pointer;transition:background .12s}
+.kpi-tripe:hover{background:#e9ebf3}
+.kpi-tripe-nome{font-size:12.5px;font-weight:600;color:var(--navy)}
+
+@media (max-width:820px){ .tripe-grid{grid-template-columns:1fr} }
+
+/* ===== habilitadores → ações ===== */
+.hab-group{border:1px solid var(--line);border-radius:6px;padding:10px 12px;background:#fff}
+.hab-group-title{font-size:12.5px;font-weight:700;color:var(--navy);margin-bottom:8px}
+.hab-acoes{display:flex;flex-direction:column;gap:4px}
+.hab-acao-row{display:flex;align-items:center;gap:8px;padding:6px 6px;border-radius:5px;cursor:pointer;transition:background .12s}
+.hab-acao-row:hover{background:var(--surface)}
+.hab-acao-nome{font-size:12px;color:var(--ink-soft);flex:1;line-height:1.35}
+.hab-acao-chevron{font-size:14px;color:var(--ink-faint);flex-shrink:0}
+
+/* ===== habilitadores do Vetor Transversal — grupos + ações (página cheia) ===== */
+.habgrupo-card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:20px 22px 18px;margin-bottom:16px;border-top:4px solid var(--line)}
+.habgrupo-titulo{font-family:'Plus Jakarta Sans',sans-serif;font-size:15.5px;font-weight:700;color:var(--ink);letter-spacing:-.01em;margin-bottom:8px}
+.habgrupo-desc{font-size:13px;color:var(--ink-soft);line-height:1.6;margin:0 0 16px}
+.acoes-lista{display:flex;flex-direction:column;gap:8px}
+.acao-card{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:11px 15px;cursor:pointer;transition:border-color .15s,box-shadow .15s,background .15s}
+.acao-card:hover{background:#fff;box-shadow:0 3px 14px rgba(0,0,0,.07)}
+.acao-nome{font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.45;flex:1}
+.acao-seta{flex-shrink:0;font-size:17px;font-weight:600;line-height:1;color:var(--ink-faint)}
+.acao-card:hover .acao-seta{color:var(--ink-soft)}
+
+/* ===== status-badge (Ação) ===== */
+.status-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:20px;font-size:11.5px;font-weight:700;white-space:nowrap;flex-shrink:0}
+.status-badge .sb-icon{font-size:12px;line-height:1}
+.sb-concepcao{background:rgba(136,144,168,.14);color:var(--ink-soft)}
+.sb-mobilizacao{background:rgba(59,188,175,.16);color:var(--aqua2)}
+.sb-execucao{background:rgba(31,166,56,.13);color:var(--green2)}
+
+/* ===== kpi-item (Indicador expandido) ===== */
+.kpi-item{border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.kpi-item-body{display:none;padding:14px;border-top:1px solid var(--line);background:#0d1625}
+.kpi-item-body.open{display:block}
+.chart-wrap{width:100%;margin-bottom:12px;overflow:hidden;border-radius:4px}
+.chart-wrap svg{width:100%;display:block}
+.pt-hover{cursor:pointer}
+.pt-hover-val{opacity:0;transition:opacity .12s}
+.pt-hover:hover .pt-hover-val{opacity:1}
+.chart-legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+.cl-item{display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.5)}
+.cl-dot{width:14px;height:3px;border-radius:2px;flex-shrink:0}
+.cl-dot.realizado{background:#6c7ae0}
+.cl-dot-round{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.kpi-fonte{font-size:12px;color:rgba(255,255,255,.5);border-top:1px solid rgba(255,255,255,.08);padding-top:10px;margin-top:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.kpi-fonte .cadencia{font-size:11px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);padding:3px 9px;border-radius:5px;margin-left:4px;color:rgba(255,255,255,.6)}
+.kpi-footnote{font-size:11.5px;color:rgba(255,255,255,.4);line-height:1.55;margin-top:8px;font-style:italic}
+
+/* ===== tracker de 3 fases (tela Ação) ===== */
+.tracker{display:flex;align-items:flex-start;margin:18px 0 22px}
+.tk-col{display:flex;flex-direction:column;align-items:center;min-width:92px}
+.tk-circle{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:13px;border:2px solid var(--line);color:var(--ink-faint);background:#fff}
+.tk-col.tk-done .tk-circle{background:var(--green);border-color:var(--green);color:#fff}
+.tk-col.tk-current .tk-circle{background:var(--aqua);border-color:var(--aqua);color:#fff;width:38px;height:38px;font-size:15px;box-shadow:0 0 0 4px rgba(59,188,175,.18)}
+.tk-col.tk-upcoming .tk-circle{background:#fff;border-color:var(--line);color:var(--ink-faint)}
+.tk-label{font-family:'Plus Jakarta Sans',sans-serif;font-size:11.5px;font-weight:600;margin-top:7px;color:var(--ink-soft);text-align:center}
+.tk-col.tk-upcoming .tk-label{color:var(--ink-faint);font-weight:500}
+.tk-sub-wrap{margin-top:4px;display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--aqua2);background:rgba(59,188,175,.1);border-radius:10px;padding:2px 8px}
+.tk-connector{flex:1;height:2px;background:var(--line);margin-top:16px;min-width:20px}
+.tk-connector.tk-connector-done{background:var(--green)}
+
+/* ===== item completo Ação ===== */
+.ac-item{border:1px solid var(--line);border-radius:7px;padding:20px 22px;background:#fff;max-width:640px}
+.ac-item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.ac-nome{font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:600;color:var(--ink);flex:1}
+.ac-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:14px}
+.ab-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;color:var(--ink-faint);margin-bottom:8px}
+@media (max-width:520px){ .ac-grid{grid-template-columns:1fr} }
+.membros-list{display:flex;flex-wrap:wrap;gap:6px}
+.membro-chip{font-size:12px;font-weight:600;color:var(--navy);background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px 10px}
+.ab-vazio{font-size:12px;color:var(--ink-faint);font-style:italic}
+.contato-box{display:flex;align-items:center;gap:10px}
+.contato-avatar{width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:13px;flex-shrink:0}
+.contato-nome{font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;font-size:13.5px;color:var(--ink)}
+.contato-papel{font-size:11.5px;color:var(--ink-faint)}
+.status-desc{margin-top:16px;background:var(--surface);border-left:3px solid var(--aqua);border-radius:6px;padding:10px 14px}
+.sd-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;color:var(--ink-faint);margin-bottom:4px}
+.status-desc p{margin:0;font-size:12.5px;color:var(--ink-soft);line-height:1.55}
+
+/* ===== panorama ===== */
+.pan-card{border-radius:14px;overflow:hidden;background:#0d1625;border:1px solid rgba(255,255,255,.08);cursor:pointer;transition:transform .15s}
+.pan-card:hover{transform:translateY(-3px)}
+.pan-card.disabled{cursor:not-allowed;filter:grayscale(.6);opacity:.75}
+.foot{margin-top:48px;padding-top:20px;font-size:11.5px;line-height:1.7;color:rgba(255,255,255,.35);border-top:1px solid rgba(255,255,255,.08)}
+.foot b{color:rgba(255,255,255,.5)}
+
+/* ===== toast (novo — substitui alert() dos workbenches) ===== */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a2436;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;box-shadow:0 8px 28px rgba(0,0,0,.4);opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:9999;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast"></div>
+<script>
+// ═══════════════════════════════════════════════════════════
+// STATUS — escala-alvo + aliases legados (fiel aos workbenches)
+// ═══════════════════════════════════════════════════════════
+const STATUS = {
+  on_track:          { key:'on_track',          label:'On Track',          cor:'#1fa638' },
+  off_track:         { key:'off_track',         label:'Off Track',         cor:'#f0a500' },
+  off_track_critical:{ key:'off_track_critical',label:'Off Track',         cor:'#d03040' },
+  insufficient_data: { key:'insufficient_data', label:'Insufficient Data', cor:'#8890a8' },
+};
+function chip(status){ const s=STATUS[status]||STATUS.insufficient_data; return `<span class="chip ${s.key}">${s.label}</span>`; }
+
+// ═══════════════════════════════════════════════════════════
+// DADOS — setores, árvore, alavancas
+// ═══════════════════════════════════════════════════════════
+const SETORES = [
+  { id:'transporte', nome:'Transporte', cor:'#3bbcaf' },
+  { id:'agro',       nome:'Agro',       cor:'#1fa638' },
+  { id:'mineracao',  nome:'Mineração',  cor:'#b87333' },
+  { id:'energia',    nome:'Energia',    cor:'#f0a500' },
+  { id:'florestas',  nome:'Florestas',  cor:'#2a8c50' },
+];
+
+// ARVORE.transporte — estrutura real (setor-transporte.html), única fonte de
+// verdade reusada em Panorama, Setor, Modal e Macro-tema. As outras 4 setores
+// usam árvores mínimas agregadas, iguais ao que já vinha no workbench
+// panorama.html — servem só para os cards do Panorama não ficarem vazios,
+// não são dado real.
+const ARVORE = {
+  transporte: {
+    nome:'Transporte', labelModal:'Modal',
+    modais:[
+      { id:'rodoviario', nome:'Rodoviário',
+        vetores:[
+          { id:'eletrificacao',  nome:'Eletrificação de Frota',         alavancaIds:['t_hibr','t_elet100'] },
+          { id:'biocombust_rod', nome:'Biocombustíveis',                alavancaIds:['t_etanol','t_diesel_bio'] },
+          { id:'eficiencia_rod', nome:'Eficiência de Frota',            alavancaIds:['t_moderniza'] }
+        ]
+      },
+      { id:'ferroviario', nome:'Ferroviário',
+        vetores:[
+          { id:'eficiencia_fer',   nome:'Eficiência Operacional',        alavancaIds:['t_rotas_ferro'] },
+          { id:'eletrificacao_fer',nome:'Eletrificação (Locomotivas)',   alavancaIds:['t_loco_hibrida'] }
+        ]
+      },
+      { id:'aquaviario', nome:'Aquaviário',
+        vetores:[
+          { id:'eficiencia_aq', nome:'Eficiência Operacional',          alavancaIds:['t_atracacao'] },
+          { id:'bio_aq',        nome:'Biocombustíveis em Embarcações',  alavancaIds:['t_bio_emb'] }
+        ]
+      },
+      { id:'aereo', nome:'Aeroviário',
+        vetores:[
+          { id:'eficiencia_aer', nome:'Gestão Operacional', alavancaIds:['t_gestao_aer'] },
+          { id:'saf',            nome:'Bio-SAF',            alavancaIds:['t_biosaf'] }
+        ]
+      },
+      { id:'mob_urbana', nome:'Mobilidade Urbana',
+        vetores:[
+          { id:'avoid',   nome:'Avoid — Redução de Demanda',          alavancaIds:['t_rotas_urb'] },
+          { id:'shift',   nome:'Shift — Transporte Coletivo',         alavancaIds:['t_coletivo'] },
+          { id:'improve', nome:'Improve — Emissões Próximas de Zero', alavancaIds:['t_zero_emis'] }
+        ]
+      }
+    ]
+  },
+  agro:      { nome:'Agronegócio' },
+  mineracao: { nome:'Mineração' },
+  energia:   { nome:'Energia' },
+  florestas: { nome:'Florestas' },
+};
+
+const SECTOR_META = {
+  transporte: {
+    desc:'Responsável por ~11% das emissões brutas do país (260 MtCO₂e em 2023, visão poço à roda), o setor pode chegar a 424 MtCO₂e em 2050 num cenário de inação. As alavancas mapeadas pela Coalizão mostram como reduzir cerca de 70% dessas emissões projetadas, mesmo com o crescimento esperado da demanda.',
+    stats:[['11%','das emissões brutas do Brasil'],['>90%','provenientes do modal rodoviário'],['50+','entidades em 6 verticais']]
+  }
+};
+const EMISSOES_SETOR = {
+  transporte: {
+    titulo:'Emissões no setor de Transportes',
+    subtitulo:'Mton CO₂e — Poço à Roda · Estudo Coalizão dos Transportes 2025',
+    base2023:260, crescimento2050:164, reducaoAlav:-255, reducaoOther:-32, meta2050:137,
+    pctReducao:68, percapita:[1.2, 1.9, 0.6],
+    fonte:'Coalizão dos Transportes (2025)',
+  }
+};
+
+// WATERFALL_POTENCIAL_DATA — cascata de emissões do Panorama (Brasil 2023 →
+// Escopo das Coalizões → cenário de inação 2050 → potencial de redução com
+// alavancas → residual 2050). Quebra por setor é dado real da planilha de
+// indicadores (MtCO₂e ÷1000); o resto reproduz o slide de referência do
+// cliente (Master Deck CEBDS).
+const WATERFALL_POTENCIAL_DATA = {
+  brasil2023:2.4, escopoCoalizoes2023:0.8, pctEscopo2023:33,
+  bau2050:1.4, pctCresc:75,
+  reducaoTotal:1.096, pctRed:80, residual2050:0.304,
+  setores:[
+    { id:'transporte', nome:'Transporte', potencial:0.287 },
+    { id:'agro',       nome:'Agro',       potencial:0.630 },
+    { id:'mineracao',  nome:'Mineração',  potencial:0.130 },
+    { id:'energia',    nome:'Energia',    potencial:0.049 },
+  ],
+};
+const WATERFALL_NOTA_FONTE = 'Notas: considera emissões dentro do raio de ação da Coalizão. Em mineração, foi incluída a Navegação de Longo Curso, mas excluídos Minerais para a Transição e DR Grade; o baseline de emissões de 2023 foi estimado aplicando a participação setorial nas emissões totais adotada pelo relatório das Coalizões (Energia: 1,2%; Mineração: 0,5%). Fonte: relatórios das Coalizões setoriais de Minerais Críticos, Transportes, Energia e Agro.';
+
+// acaoVT — ação dentro de um grupo de Habilitadores do Vetor Transversal.
+// statusKey seque o modelo fase×ritmo confirmado no deck do CEBDS
+// (concepcao|mobilizacao|execucao)_(pausado|andamento|avancado), ou
+// 'concluido'. real:true marca a ÚNICA ação com dado de fato (Excel
+// "para_o_claude_04_08__vetor_transversal.xlsx") — as outras 10 são
+// conteúdo ilustrativo do workbench 10_vetor-transversal-biocombustiveis,
+// parafraseado do Master Deck CEBDS (não copiado literalmente).
+function acaoVT(nome, statusKey, real){ return { nome, statusKey, real: !!real }; }
+
+const CROSS_CUTTING = [
+  { id:'cc_bio', nome:'Biocombustíveis',
+    // habilitadoresVetor: 4 grupos temáticos fixos (Infraestrutura logística /
+    // Compatibilidade de motor-combustível / Mecanismos para fomentar
+    // demanda / Cadeia de custódia). Teses (14, reais no workbench) e KPIs
+    // do vetor NÃO entram aqui — a própria página de origem já não os
+    // renderiza (DEC-VT-CONT-008/003), então ficariam sem uso neste
+    // protótipo também.
+    habilitadoresVetor: [
+      { id:'g1', nome:'Infraestrutura logística', cor:'#1fa638',
+        descricao:'Ampliar a infraestrutura logística compartilhada para os biocombustíveis, reduzindo custos e aumentando a competitividade na ponta da cadeia',
+        acoes:[
+          // ÚNICA ação real (Excel: habilitador_id=1, acao_id=1, vetor_transversal_nome=Biocombustíveis).
+          // etapa_acao/status_vs_ultimo_ciclo vieram vazios → mesmo padrão
+          // neutro já decidido para a alavanca do etanol (concepção/não iniciado).
+          acaoVT('Coordenar atores para construção de duto CO-SE ampliando distribuição e competitividade do etanol', 'concepcao_pausado', true),
+          acaoVT('Impulsionar a expansão de corredores de abastecimento de biometano para uso industrial e rodoviário', 'mobilizacao_andamento'),
+          acaoVT('Apoiar o desenvolvimento de infraestrutura compartilhada de biodiesel ao redor de complexos industriais', 'concepcao_andamento'),
+        ] },
+      { id:'g2', nome:'Compatibilidade de motor-combustível', cor:'#17892e',
+        descricao:'Viabilizar tecnologia de motores de maior porte compatíveis com biocombustíveis, destravando novos usos em modais hoje pouco atendidos',
+        acoes:[
+          acaoVT('Fomentar a oferta e a adoção de embarcações trifuel (etanol, metanol, bunker) na navegação', 'mobilizacao_avancado'),
+          acaoVT('Orquestrar o desenvolvimento de motores compatíveis com etanol para locomotivas de carga', 'concepcao_andamento'),
+          acaoVT('Facilitar a troca de experiências sobre o uso voluntário de motores B100 em frotas cativas', 'execucao_andamento'),
+        ] },
+      { id:'g3', nome:'Mecanismos para fomentar demanda', cor:'#211c63',
+        descricao:'Estimular a compra e venda de biocombustíveis em mercados organizados, trazendo mais previsibilidade para produtores e compradores',
+        acoes:[
+          acaoVT('Estimular o uso de contratos futuros de etanol listados na B3 para apoiar liquidez e decisões de investimento', 'execucao_avancado'),
+          acaoVT('Apoiar a criação de um mercado futuro de biometano, ampliando a previsibilidade de preços', 'concepcao_pausado'),
+        ] },
+      { id:'g4', nome:'Cadeia de custódia', cor:'#a9a233',
+        descricao:'Ampliar a certificação de emissões evitadas por biocombustíveis brasileiros, viabilizando a monetização do benefício ambiental',
+        acoes:[
+          acaoVT('Estimular o geomonitoramento de fornecedores não verticalizados, certificando a origem do feedstock', 'mobilizacao_pausado'),
+          acaoVT('Apoiar a construção de um padrão para processos e sistemas em armazéns, preservando a custódia', 'concepcao_andamento'),
+          acaoVT('Coordenar a criação de uma camada interoperável de dados para registro de custódia', 'concepcao_pausado'),
+        ] },
+    ],
+  },
+  // cc_elet (Eletrificação) fica fora do fluxo — não recebemos o workbench
+  // nem dado real para ela nesta rodada.
+  { id:'cc_elet', nome:'Eletrificação' },
+];
+
+// CC_META — texto do hero de cada vetor. cc_bio: 3 parágrafos, texto final
+// aprovado pelo usuário (não é paráfrase minha), com negrito nos termos
+// indicados por ele (workbench 10, revisão 5, DEC-VT-CONT-015).
+const CC_META = {
+  cc_bio: { desc:[
+    '<b>Biocombustíveis</b> é um dos vetores transversais do painel por combinar <b>alto potencial de redução de emissões</b> com desafios que dependem de coordenação entre diferentes setores, como infraestrutura, compatibilidade tecnológica e certificação.',
+    'Esta aba apresenta o potencial de expansão de Etanol, Biodiesel, Biometano, Diesel Verde e SAF nos diferentes modais de transporte. A partir desse mapeamento, foram identificados os principais <b>habilitadores</b> para acelerar sua adoção.',
+    'O painel acompanha a evolução desses habilitadores, organizados em quatro frentes: <b>infraestrutura logística</b>, <b>compatibilidade entre motores e combustíveis</b>, <b>mecanismos de estímulo à demanda</b> e <b>cadeia de custódia</b>. Em cada frente, são apresentadas as ações cuja implementação depende da atuação coordenada entre empresas e demais atores do ecossistema.'
+  ] }
+};
+
+// ═══════════════════════════════════════════════════════════
+// ALAVANCAS
+// - 't_etanol' = DADO REAL, extraído de "para_o_claude_04_08.xlsx"
+//   (aba Indicadores → ALV_TRA_4_1..9; aba Habilitadores → 2 grupos/4 ações,
+//   corrigidas para ALV_TRA_4 conforme confirmado pelo usuário).
+// - as demais são STUBS (id + status), copiados literalmente do workbench
+//   setor-transporte.html — só para os cards fora do fluxo não ficarem sem
+//   status. Não são dado real.
+// ═══════════════════════════════════════════════════════════
+const ALAVANCAS = [
+  {
+    id:'t_etanol',
+    nome:'Aumento do uso do etanol (ex. preferência na bomba e mistura na Gasolina C)',
+    nomeDashboard:'Aumento do uso do etanol',
+    setor:'transporte', owner:'Coalizão Transportes',
+    kpis:[
+      { id:'k1', tipo:'resultado', status:'insufficient_data',
+        nome:'Intensidade de carbono média do combustível consumido pela frota leve',
+        nomeDashboard:'IC² médio do combustível (leves ICE)',
+        unidade:'gCO2eq/MJ',
+        serieAnos:[{ano:2023,val:65.5},{ano:2024,val:62.7},{ano:2025,val:63.4}],
+        metas:[],
+        fonte:'Certificados RenovaBio/ANP, capacidade de produção por usina ANP, FGV Bioeconomia',
+        footnote:'Ciclo Otto (gasolina A + etanol anidro + etanol hidratado, ponderada pelo consumo energético)',
+        cadencia:'Mensal' },
+      { id:'k2', tipo:'resultado', status:'on_track',
+        nome:'Percentual de etanol anidro na mistura da Gasolina C (mandato regulatório)',
+        nomeDashboard:'% Etanol anidro na Gasolina C',
+        unidade:'%',
+        serieAnos:[{ano:2023,val:27},{ano:2024,val:27},{ano:2025,val:30}],
+        metas:[{ano:2035,val:35,cor:'#3bbcaf',label:'Ambição 2035'},{ano:2050,val:35,cor:'#5dd87a',label:'Ambição 2050'}],
+        fonte:'CNPE / MME / ANP',
+        footnote:'Gasolina Premium tem mandato próprio (25% de anidro) mas responde por ~0,34% do volume de Gasolina C (161,61 mil m³ de premium vs. 47.629,47 mil m³ de gasolina C em 2025, Painel SIMP/ANP). Por isso Gasolina C foi tratada como um bloco único, devido a diferença desprezível.',
+        cadencia:'Anual, por evento regulatório (não periódica)' },
+      { id:'k3', tipo:'resultado', status:'insufficient_data',
+        nome:'Participação do etanol hidratado no consumo de combustíveis leves do ciclo Otto (% do volume)',
+        nomeDashboard:'Venda Etanol Hidratado vs Gasolina C',
+        unidade:'%',
+        serieAnos:[{ano:2023,val:26.1},{ano:2024,val:32.9},{ano:2025,val:31.3}],
+        metas:[{ano:2035,val:40,cor:'#3bbcaf',label:'Ambição 2035'},{ano:2050,val:100,cor:'#5dd87a',label:'Ambição 2050'}],
+        fonte:'ANP — Vendas de Derivados de Petróleo e Biocombustíveis (dados abertos)',
+        footnote:null,
+        cadencia:'Mensal' },
+      { id:'k4', tipo:'resultado', status:'insufficient_data',
+        nome:'Intensidade de carbono média do etanol anidro (ciclo de vida, poço-à-roda)',
+        nomeDashboard:'IC² etanol anidro',
+        unidade:'gCO2eq/MJ',
+        serieAnos:[{ano:2023,val:26.9},{ano:2024,val:27.2},{ano:2025,val:27.2}],
+        metas:[],
+        fonte:'Certificados RenovaBio/ANP, capacidade de produção por usina ANP, FGV Bioeconomia',
+        footnote:'Nota de Eficiência Energético-Ambiental média dos certificados RenovaBio de etanol anidro válidos na data-alvo, ponderada pela capacidade de produção de cada usina, convertida em IC',
+        cadencia:'Mensal' },
+      { id:'k5', tipo:'resultado', status:'insufficient_data',
+        nome:'Intensidade de carbono média do etanol hidratado (ciclo de vida, poço-à-roda)',
+        nomeDashboard:'IC² etanol hidratado',
+        unidade:'gCO2eq/MJ',
+        serieAnos:[{ano:2023,val:27.9},{ano:2024,val:27.5},{ano:2025,val:27.6}],
+        metas:[],
+        fonte:'Certificados RenovaBio/ANP, capacidade de produção por usina ANP, FGV Bioeconomia',
+        footnote:'Nota de Eficiência Energético-Ambiental média dos certificados RenovaBio de etanol hidratado válidos na data-alvo, ponderada pela capacidade de produção de cada usina, convertida em IC',
+        cadencia:'Mensal' },
+      { id:'k6', tipo:'preditivo',
+        nome:'Produção realizada de etanol anidro e hidratado, soma nacional',
+        nomeDashboard:'Produção nacional de etanol (anidro e hidratado)',
+        unidade:'milhões de m³/ano',
+        serieAnos:[{ano:2023,val:35.5},{ano:2024,val:37.0},{ano:2025,val:36.1}],
+        metas:[],
+        fonte:'Painel Dinâmico de Produtores de Etanol da ANP (RenovaBio)',
+        footnote:'Produção efetivamente realizada, não capacidade instalada',
+        cadencia:'Anual' },
+      { id:'k7', tipo:'preditivo',
+        nome:'Capacidade adicional potencial de produção de etanol em processos de ampliação e construção na ANP',
+        nomeDashboard:'Capacidade incremental de etanol em autorização pela ANP',
+        unidade:'m³/dia',
+        serieAnos:[{ano:2026,val:52262}],
+        metas:[],
+        fonte:'Relatório Dinâmico de Autorizações de Etanol da ANP',
+        footnote:'Valor líquido da capacidade que estava instalada nos casos de ampliação',
+        cadencia:'Anual' },
+      { id:'k8', tipo:'preditivo',
+        nome:'Paridade de preço etanol hidratado sobre gasolina comum',
+        nomeDashboard:'Paridade de preço gasolina-etanol',
+        unidade:'%',
+        serieAnos:[{ano:2023,val:68.3},{ano:2024,val:65.1},{ano:2025,val:68.6}],
+        metas:[],
+        fonte:'Painel Dinâmico de Preços de Revenda da ANP',
+        footnote:'Média simples dos 12 meses do ano',
+        cadencia:'Anual' },
+      { id:'k9', tipo:'preditivo',
+        nome:'Variação percentual ano a ano da intensidade de carbono média do etanol',
+        nomeDashboard:'Variação do IC² do etanol',
+        unidade:'%',
+        serieAnos:[{ano:2024,val:-0.6},{ano:2025,val:0.3}],
+        metas:[],
+        fonte:'Certificados RenovaBio/ANP, capacidade de produção por usina ANP, FGV Bioeconomia',
+        footnote:null,
+        cadencia:'Anual' },
+    ],
+    habilitadores:[
+      { nome:'Mecanismos para fomentar demanda', acoes:[
+        { nome:'Expansão da disponibilidade e preferência por etanol na bomba', fase:'concepcao', subnivel:'pausado', membros:[], pontoContato:null, descricaoStatus:'' },
+        { nome:'Revisão dos mandatos de mistura pelo CNPE', fase:'concepcao', subnivel:'pausado', membros:[], pontoContato:null, descricaoStatus:'' },
+      ]},
+      { nome:'Viabilizar economicidade', acoes:[
+        { nome:'Validação da economicidade de percentuais de mistura', fase:'concepcao', subnivel:'pausado', membros:[], pontoContato:null, descricaoStatus:'' },
+        { nome:'Desenvolvimento de tecnologia de biocombustíveis de menor IC (ex., coprocessamento)', fase:'concepcao', subnivel:'pausado', membros:[], pontoContato:null, descricaoStatus:'' },
+      ]},
+    ],
+  },
+  // 't_diesel_bio' é o único stub ainda lido por algum código — aparece
+  // (inerte) na lista de alavancas de Biocombustíveis, a única macro-tema
+  // alcançável neste fluxo. Os demais ids referenciados em ARVORE.transporte
+  // (t_hibr, t_elet100, t_moderniza etc.) só entram como contagem
+  // (alavancaIds.length) nos cards inertes de Setor/Modal — não precisam de
+  // objeto correspondente aqui, porque essas telas nunca chegam a ser
+  // renderizadas (goModal/goVetor barram qualquer id fora do fluxo antes
+  // de chamar render()).
+  {id:'t_diesel_bio',nomeDashboard:'Diesel renovável (placeholder, sem dado)'},
+];
+
+// ═══════════════════════════════════════════════════════════
+// HELPERS — ação/fase, gráfico
+// (alavancasStatus/dominantStatus/avgStatus/sdot foram removidos nesta
+// limpeza — nenhuma tela mais exibe status agregado de setor/modal/
+// macro-tema, então nada mais os chamava. Ver revisão 4 no topo do arquivo.)
+// ═══════════════════════════════════════════════════════════
+
+const FASES = [
+  { id:'concepcao',   label:'Concepção'   },
+  { id:'mobilizacao', label:'Mobilização' },
+  { id:'execucao',    label:'Execução'    }
+];
+const SUBNIVEIS = [
+  { id:'pausado',  icon:'⏸',  label:'Não iniciado' },
+  { id:'iniciado', icon:'▶',  label:'Iniciado'      },
+  { id:'avancado', icon:'▶▶', label:'Avançado'      }
+];
+const CONCLUIDO = { id:'concluido', icon:'✓', label:'Concluído' };
+function faseIndex(faseId){ return FASES.findIndex(f=>f.id===faseId); }
+// parseStatusKey — traduz o statusKey do workbench de vetor transversal
+// (ex.: 'mobilizacao_andamento', 'concluido') para o {fase,subnivel} já
+// usado em toda a Ação/tripé. Evita duplicar um segundo sistema de selo
+// (o workbench original tinha cores próprias por fase×ritmo — simplificado
+// aqui para reaproveitar o statusBadgeAcao()/statusBadge() já existentes,
+// e manter a linguagem visual consistente no app inteiro).
+function parseStatusKey(key){
+  if(key==='concluido') return {fase:'execucao', subnivel:'concluido'};
+  const i = key.indexOf('_');
+  const fase = key.slice(0,i);
+  const ritmo = key.slice(i+1);
+  return { fase, subnivel: ritmo==='andamento' ? 'iniciado' : ritmo };
+}
+function subnivelInfo(fase,subnivel){
+  if(subnivel==='concluido' && fase==='execucao') return CONCLUIDO;
+  return SUBNIVEIS.find(s=>s.id===subnivel) || SUBNIVEIS[0];
+}
+// selo compacto (usado no tripé e no painel Balanço)
+function statusBadgeAcao(fase,subnivel){
+  const f=FASES.find(x=>x.id===fase);
+  const s=subnivelInfo(fase,subnivel);
+  return `<span class="status-badge sb-${fase}"><span class="sb-icon">${s.icon}</span><span>${f?f.label:''}</span></span>`;
+}
+// selo completo — "fase · sub-nível" por extenso (usado na tela Ação)
+function statusBadge(fase,subnivel){
+  const f=FASES.find(x=>x.id===fase);
+  const s=subnivelInfo(fase,subnivel);
+  return `<span class="status-badge sb-${fase}"><span class="sb-icon">${s.icon}</span><span>${f?f.label:''} · ${s.label}</span></span>`;
+}
+function statusTracker(fase,subnivel){
+  const curIdx=faseIndex(fase);
+  let html='<div class="tracker">';
+  FASES.forEach((f,i)=>{
+    const state = i<curIdx ? 'done' : (i===curIdx ? 'current' : 'upcoming');
+    let sub='';
+    if(state==='current'){
+      const s=subnivelInfo(fase,subnivel);
+      sub=`<span class="tk-sub-wrap"><span>${s.icon}</span><span>${s.label}</span></span>`;
+    }
+    html+=`<div class="tk-col tk-${state}">
+      <div class="tk-circle">${state==='done'?'✓':(i+1)}</div>
+      <div class="tk-label">${f.label}</div>
+      ${sub}
+    </div>`;
+    if(i<FASES.length-1){
+      const lineState = i<curIdx ? 'done' : 'upcoming';
+      html+=`<div class="tk-connector tk-connector-${lineState}"></div>`;
+    }
+  });
+  html+='</div>';
+  return html;
+}
+function iniciais(nome){ return nome.split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
+function renderMembros(lista){
+  if(!lista || !lista.length) return `<span class="ab-vazio">Nenhuma entidade registrada — a validar</span>`;
+  return `<div class="membros-list">${lista.map(m=>`<span class="membro-chip">${m}</span>`).join('')}</div>`;
+}
+function renderContato(c){
+  if(!c) return `<span class="ab-vazio">Ponto focal a validar</span>`;
+  return `<div class="contato-box"><div class="contato-avatar">${iniciais(c.nome)}</div>
+    <div><div class="contato-nome">${c.nome}</div><div class="contato-papel">${c.papel}</div></div></div>`;
+}
+function renderDescricao(txt){
+  const t = txt && txt.trim() ? txt : 'Descrição de status ainda não registrada — a validar.';
+  return `<div class="status-desc"><div class="sd-label">Status atual</div><p>${t}</p></div>`;
+}
+
+// trajeChart(kpi) — generalizado a partir de indicador-sucesso_FINAL.html:
+// desenha a série real (serieAnos) e, se houver, os marcos de ambição
+// (metas). Sem ambição (Preditivo, ou Sucesso ainda sem meta definida no
+// Excel) simplesmente não desenha marcos — não inventa meta.
+function trajeChart(kpi){
+  const W=460,H=180,PAD={t:20,r:20,b:34,l:44};
+  const iW=W-PAD.l-PAD.r, iH=H-PAD.t-PAD.b;
+  const serie = kpi.serieAnos, metas = kpi.metas||[];
+  const anos = serie.map(p=>p.ano).concat(metas.map(m=>m.ano));
+  let anoMin=Math.min(...anos), anoMax=Math.max(...anos);
+  if(anoMin===anoMax) anoMax=anoMin+1;
+  const vals = serie.map(p=>p.val).concat(metas.map(m=>m.val));
+  const rawMin=Math.min(...vals), rawMax=Math.max(...vals);
+  const pad=(rawMax-rawMin)*0.18 || Math.abs(rawMax)*0.1 || 1;
+  const mn=rawMin-pad, mx=rawMax+pad;
+  function xPx(ano){ return PAD.l + ((ano-anoMin)/(anoMax-anoMin))*iW; }
+  function yPx(v){ return PAD.t + iH - ((v-mn)/(mx-mn))*iH; }
+  function fmt(v){ return Math.abs(v)>=1000 ? (v/1000).toFixed(1)+'k' : (Math.round(v*10)/10).toLocaleString('pt-BR'); }
+  let svg=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  [0,.5,1].forEach(r=>{
+    const v=mn+(mx-mn)*r, y=yPx(v);
+    svg+=`<line x1="${PAD.l}" y1="${y}" x2="${W-PAD.r}" y2="${y}" stroke="rgba(255,255,255,.08)" stroke-width="1"/>`;
+    svg+=`<text x="${PAD.l-6}" y="${y+4}" text-anchor="end" font-size="10" fill="rgba(255,255,255,.35)">${fmt(v)}</text>`;
+  });
+  const pts = serie.map(p=>[xPx(p.ano),yPx(p.val)]);
+  if(pts.length>=2){
+    const d=pts.map((p,i)=>`${i===0?'M':'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+    svg+=`<path d="${d}" fill="none" stroke="#6c7ae0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>`;
+  }
+  // Cada ponto histórico ganha ano sempre visível; o VALOR só aparece no
+  // hover (pedido do usuário — evita sobrepor o eixo, ex.: 65,5 em cima do
+  // "66"). O ponto mais recente ("Hoje") continua com valor sempre visível,
+  // maior e em destaque — é o número que a tela quer comunicar de cara.
+  serie.forEach((p,i)=>{
+    const [x,y] = pts[i];
+    const isLast = i===serie.length-1;
+    if(isLast){
+      svg+=`<circle cx="${x}" cy="${y}" r="6" fill="#6c7ae0"/>`;
+      svg+=`<text x="${x}" y="${y-10}" text-anchor="middle" font-size="11" fill="#fff" font-weight="700">${fmt(p.val)}</text>`;
+    } else {
+      svg+=`<g class="pt-hover">
+        <circle cx="${x}" cy="${y}" r="10" fill="transparent" style="pointer-events:all"/>
+        <circle cx="${x}" cy="${y}" r="4" fill="#6c7ae0"/>
+        <text class="pt-hover-val" x="${x}" y="${y-10}" text-anchor="middle" font-size="10" fill="rgba(255,255,255,.85)" font-weight="600">${fmt(p.val)}</text>
+      </g>`;
+    }
+    svg+=`<text x="${x}" y="${H-10}" text-anchor="middle" font-size="10" fill="rgba(255,255,255,${isLast?0.4:0.3})">${p.ano}</text>`;
+  });
+  metas.forEach(m=>{
+    const x=xPx(m.ano), y=yPx(m.val);
+    svg+=`<circle cx="${x}" cy="${y}" r="5" fill="${m.cor}" opacity="0.9"/>`;
+    svg+=`<text x="${x}" y="${y-10}" text-anchor="middle" font-size="10.5" fill="${m.cor}" font-weight="700">${fmt(m.val)}</text>`;
+    svg+=`<text x="${x}" y="${H-10}" text-anchor="middle" font-size="10" fill="${m.cor}" font-weight="600">${m.ano}</text>`;
+  });
+  svg+='</svg>';
+  return svg;
+}
+
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent = msg || 'Conteúdo ainda não integrado neste protótipo — fora do fluxo único de teste.';
+  el.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>el.classList.remove('show'), 2600);
+}
+
+// ═══════════════════════════════════════════════════════════
+// ROUTER
+// ═══════════════════════════════════════════════════════════
+let route = { view:'panorama' };
+
+function buildBreadcrumb(items){
+  const parts = items.map((it,i)=>{
+    if(i===items.length-1) return `<span class="bc-current">${it.label}</span>`;
+    return `<span class="bc-item" onclick="${it.onclick}">${it.label}</span>`;
+  });
+  return `<div class="breadcrumb">${parts.join('<span class="bc-sep">›</span>')}</div>`;
+}
+
+function goHome(){ route={view:'panorama'}; render(); window.scrollTo(0,0); }
+function goSetor(sid){ if(sid!=='transporte'){ toast(); return; } route={view:'setor',setorId:sid}; render(); window.scrollTo(0,0); }
+function goModal(sid,mid){ if(!(sid==='transporte'&&mid==='rodoviario')){ toast(); return; } route={view:'modal',setorId:sid,modalId:mid}; render(); window.scrollTo(0,0); }
+function goVetor(sid,mid,vid){ if(!(sid==='transporte'&&mid==='rodoviario'&&vid==='biocombust_rod')){ toast(); return; } route={view:'vetor',setorId:sid,modalId:mid,vetorId:vid}; render(); window.scrollTo(0,0); }
+function goDetalhe(sid,mid,vid,aid){ if(aid!=='t_etanol'){ toast(); return; } route={view:'detalhe',setorId:sid,modalId:mid,vetorId:vid,alavancaId:aid}; render(); window.scrollTo(0,0); }
+// cc_bio é o único vetor transversal com tela própria neste protótipo.
+function goCrossCutting(ccId){
+  if(ccId!=='cc_bio'){ toast('Vetor ainda não integrado neste protótipo — cards ilustrativos, sem tela própria aqui.'); return; }
+  route={view:'vetor-transversal',ccId}; render(); window.scrollTo(0,0);
+}
+// Cada indicador (Sucesso ou Preditivo) tem PÁGINA PRÓPRIA — nada de lista
+// concentrada com vários indicadores juntos (correção pedida pelo usuário).
+function goIndicador(aid,kid){ route={view:'indicador',alavancaId:aid,kpiId:kid}; render(); window.scrollTo(0,0); }
+function goAcao(aid,gi,ai){ route={view:'acao',origem:'alavanca',alavancaId:aid,grupoIdx:gi,acaoIdx:ai}; render(); window.scrollTo(0,0); }
+function goAcaoVetor(ccId,gi,ai){ route={view:'acao',origem:'vetor',ccId,grupoIdx:gi,acaoIdx:ai}; render(); window.scrollTo(0,0); }
+function goVoltarDetalhe(){ route={view:'detalhe',setorId:'transporte',modalId:'rodoviario',vetorId:'biocombust_rod',alavancaId:'t_etanol'}; render(); window.scrollTo(0,0); }
+// Cabeçalho da coluna Habilitadores continua só rolando a tela até ela —
+// não navega para lugar nenhum (Sucesso/Preditivo perderam esse
+// comportamento de cabeçalho clicável; só o card individual navega agora).
+function scrollParaHabilitadores(){ document.querySelector('.tc-hab')?.scrollIntoView({behavior:'smooth',block:'start'}); }
+
+function render(){
+  if(route.view==='setor')            return renderSetor(route.setorId);
+  if(route.view==='modal')            return renderModal(route.setorId, route.modalId);
+  if(route.view==='vetor')            return renderVetor(route.setorId, route.modalId, route.vetorId);
+  if(route.view==='vetor-transversal')return renderVetorTransversal(route.ccId);
+  if(route.view==='detalhe')          return renderDetalhe(route.alavancaId);
+  if(route.view==='indicador')        return renderIndicador(route.alavancaId, route.kpiId);
+  if(route.view==='acao')             return renderAcao(route);
+  return renderPanorama();
+}
+
+// ═══════════════════════════════════════════════════════════
+// TELA: Panorama
+// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// buildWaterfallPotencial() — cascata de emissões do Panorama (adaptado do
+// workbench panorama.html). Estático — animações de entrada removidas.
+// ═══════════════════════════════════════════════════════════
+function buildWaterfallPotencial(){
+  const d = WATERFALL_POTENCIAL_DATA;
+  const POTENCIAL_COLOR = '#3bbcaf';
+  const fmt = (v)=>{ const casas = Math.abs(v)<0.1 ? 3 : 1; return v.toLocaleString('pt-BR',{minimumFractionDigits:casas,maximumFractionDigits:casas}); };
+
+  const VW=950, VH=410, GY=360, HMAX=225, SC=HMAX/d.bau2050;
+  function h(v){ return Math.max(7, Math.abs(v)*SC); }
+  const bW=86, gap=122;
+  function dash(x1,y1,x2,y2,op='.32'){ return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(255,255,255,${op})" stroke-width="1.2" stroke-dasharray="5 4"/>`; }
+  function elbowConnector(xFrom,yFrom,xTo,yTo,yElbow,badgeTxt,badgeColor){
+    const xMid=(xFrom+xTo)/2;
+    return `<line x1="${xFrom}" y1="${yFrom}" x2="${xFrom}" y2="${yElbow}" stroke="rgba(255,255,255,.55)" stroke-width="1.4"/>
+    <line x1="${xFrom}" y1="${yElbow}" x2="${xTo}" y2="${yElbow}" stroke="rgba(255,255,255,.55)" stroke-width="1.4"/>
+    <line x1="${xTo}" y1="${yElbow}" x2="${xTo}" y2="${yTo}" stroke="rgba(255,255,255,.55)" stroke-width="1.4"/>
+    <polygon points="${xTo-5},${yTo-7} ${xTo+5},${yTo-7} ${xTo},${yTo-1}" fill="rgba(255,255,255,.6)"/>
+    ${badge(xMid,yElbow,badgeTxt,badgeColor)}`;
+  }
+  function valLabel(cx,y,txt,color,size){ return `<text x="${cx}" y="${y-11}" text-anchor="middle" font-size="${size||19}" font-weight="800" fill="${color}" font-family="Plus Jakarta Sans,sans-serif">${txt}</text>`; }
+  function catLabel(cx,txt1,txt2){ return `<text x="${cx}" y="${GY+24}" text-anchor="middle" font-size="13" font-weight="700" fill="rgba(255,255,255,.65)" font-family="DM Sans,sans-serif">${txt1}</text>
+    ${txt2?`<text x="${cx}" y="${GY+40}" text-anchor="middle" font-size="10.5" fill="rgba(255,255,255,.35)" font-family="DM Sans,sans-serif">${txt2}</text>`:''}`; }
+  function badge(cx,y,txt,color){ return `<rect x="${cx-29}" y="${y-14}" width="58" height="28" rx="14" fill="${color}"/><text x="${cx}" y="${y+5}" text-anchor="middle" font-size="13" font-weight="800" fill="#0a1220" font-family="DM Sans,sans-serif">${txt}</text>`; }
+
+  const ctxScaleFactor=0.3, ctxSC=SC*ctxScaleFactor;
+  function ctxH(v){ return Math.max(7, Math.abs(v)*ctxSC); }
+  const ctxX=24, ctxW=72;
+  const ctxTotalH=ctxH(d.brasil2023), ctxTotalY=GY-ctxTotalH;
+  const ctxEscH=ctxH(d.escopoCoalizoes2023), ctxEscY=GY-ctxEscH;
+
+  const gapWide=gap+38;
+  const cascadeStart=ctxX+ctxW+82;
+  const c1=cascadeStart, c2=c1+bW+gapWide, c3=c2+bW+gap, c7=c3+bW+gap;
+  const b1h=h(d.escopoCoalizoes2023), b1y=GY-b1h;
+  const b2h=h(d.bau2050), b2y=GY-b2h;
+  const potY=b2y, potH=h(d.reducaoTotal);
+  const residH=h(d.residual2050), residY=GY-residH;
+  const yElbowCresc=Math.min(b1y,b2y)-60;
+  const yElbowRed=Math.max(30, yElbowCresc-60);
+
+  let svg=`<svg viewBox="0 0 ${VW} ${VH}" style="width:100%;max-width:950px;display:block;margin:0 auto" xmlns="http://www.w3.org/2000/svg">
+  <line x1="8" y1="${GY}" x2="${VW-8}" y2="${GY}" stroke="rgba(255,255,255,.18)" stroke-width="1"/>
+  <rect x="${ctxX}" y="${ctxTotalY}" width="${ctxW}" height="${ctxTotalH-ctxEscH}" rx="3" fill="rgba(93,216,122,.35)"/>
+  <rect x="${ctxX}" y="${ctxEscY}" width="${ctxW}" height="${ctxEscH}" rx="3" fill="#1fa638"/>
+  <text x="${ctxX+ctxW/2}" y="${ctxTotalY-14}" text-anchor="middle" font-size="19" font-weight="800" fill="rgba(255,255,255,.75)" font-family="Plus Jakarta Sans,sans-serif">${fmt(d.brasil2023)}</text>
+  <text x="${ctxX+ctxW/2}" y="${ctxEscY+ctxEscH/2+5}" text-anchor="middle" font-size="14" font-weight="800" fill="#fff" font-family="DM Sans,sans-serif">${d.pctEscopo2023}%</text>
+  <text x="${ctxX+ctxW/2}" y="${ctxTotalY+(ctxTotalH-ctxEscH)/2+5}" text-anchor="middle" font-size="14" font-weight="800" fill="#0a1220" font-family="DM Sans,sans-serif">${100-d.pctEscopo2023}%</text>
+  <text x="${ctxX+ctxW/2}" y="${GY+28}" text-anchor="middle" font-size="15" font-weight="700" fill="rgba(255,255,255,.65)" font-family="DM Sans,sans-serif">2023</text>
+  <text x="${ctxX+ctxW/2}" y="${GY+47}" text-anchor="middle" font-size="12" fill="rgba(255,255,255,.35)" font-family="DM Sans,sans-serif">Brasil · total</text>
+  ${dash(ctxX+ctxW,ctxEscY,c1,b1y)}
+  <rect x="${c1}" y="${b1y}" width="${bW}" height="${b1h}" rx="4" fill="#1fa638"/>
+  ${valLabel(c1+bW/2,b1y,fmt(d.escopoCoalizoes2023),'#fff')}
+  ${catLabel(c1+bW/2,'2023','Escopo das Coalizões')}
+  ${elbowConnector(c1+bW*0.82,b1y,c2+bW*0.18,b2y,yElbowCresc,'+'+d.pctCresc+'%','#e0a030')}
+  <rect x="${c2}" y="${b2y}" width="${bW}" height="${b2h}" rx="4" fill="#1fa638"/>
+  ${valLabel(c2+bW/2,b2y,fmt(d.bau2050),'#fff')}
+  ${catLabel(c2+bW/2,'2050','Cenário de inação')}
+  ${dash(c2+bW,b2y,c3,potY)}
+  <rect x="${c3}" y="${potY}" width="${bW}" height="${potH}" rx="4" fill="${POTENCIAL_COLOR}"/>
+  ${valLabel(c3+bW/2,potY,'-'+fmt(d.reducaoTotal),'#fff',20)}
+  ${catLabel(c3+bW/2,'Redução com','alavancas · 4 setores')}
+  ${dash(c3+bW,potY+potH,c7,residY)}
+  ${elbowConnector(c2+bW*0.82,b2y,c7+bW*0.18,residY,yElbowRed,'-'+d.pctRed+'%','#3bbcaf')}
+  <rect x="${c7}" y="${residY}" width="${bW}" height="${residH}" rx="4" fill="rgba(136,144,168,.45)"/>
+  ${valLabel(c7+bW/2,residY,fmt(d.residual2050),'rgba(255,255,255,.75)')}
+  ${catLabel(c7+bW/2,'2050','Residual · s/ alavanca')}
+</svg>`;
+
+  const legendItems=[
+    { color:'rgba(93,216,122,.35)', label:'Outros (fora do escopo das Coalizões)' },
+    { color:'#1fa638', label:'Escopo das Coalizões' },
+    { color:'#e0a030', label:'Crescimento da demanda até 2050' },
+    { color:POTENCIAL_COLOR, label:'Potencial de redução com alavancas (Transporte, Agro, Mineração, Energia)' },
+    { color:'rgba(136,144,168,.45)', label:'Residual 2050 (sem alavanca mapeada)' },
+  ];
+  let legend='<div style="display:flex;flex-wrap:wrap;gap:9px 20px;margin-top:2px;padding-top:12px;border-top:1px solid rgba(255,255,255,.07)">';
+  legendItems.forEach(it=>{ legend+=`<div style="display:flex;align-items:center;gap:7px;font-size:13px;color:rgba(255,255,255,.55)"><div style="width:14px;height:14px;border-radius:3px;background:${it.color};flex-shrink:0"></div>${it.label}</div>`; });
+  legend+='</div>';
+
+  return `<div style="background:#0b1622;border-radius:12px;padding:30px 34px;margin:0 0 32px;border:1px solid rgba(255,255,255,.1)">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:5px">Emissões no Brasil (Gt CO₂e)</div>
+    <div style="font-size:23px;font-weight:700;color:#fff;margin-bottom:22px;max-width:900px;line-height:1.35">Alavancas de descarbonização mapeadas pelas Coalizões Setoriais podem reduzir até ~80% das emissões anuais em 2050</div>
+    ${svg}
+    ${legend}
+    <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.07);line-height:1.6">${WATERFALL_NOTA_FONTE}</div>
+  </div>`;
+}
+
+function renderPanorama(){
+  let html = `<div style="text-align:center;padding:52px 0 48px">
+    <h1 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:60px;font-weight:800;color:#fff;letter-spacing:-.03em;line-height:1.05;margin:0">Núcleo Intersetorial do Clima</h1>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:8px">
+    <div style="background:rgba(93,216,122,.07);border:1px solid rgba(93,216,122,.2);border-radius:14px;padding:28px 24px">
+      <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:54px;font-weight:800;color:#5dd87a;line-height:1;letter-spacing:-.04em">270+</div>
+      <div style="font-size:14px;color:rgba(255,255,255,.6);margin-top:10px;font-weight:500">stakeholders engajados</div>
+      <div style="font-size:11.5px;color:rgba(255,255,255,.28);margin-top:4px">com forte convergência nas recomendações</div>
+    </div>
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:28px 24px">
+      <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:54px;font-weight:800;color:rgba(255,255,255,.55);line-height:1;letter-spacing:-.04em">140</div>
+      <div style="font-size:14px;color:rgba(255,255,255,.6);margin-top:10px;font-weight:500">alavancas consolidadas</div>
+      <div style="font-size:11.5px;color:rgba(255,255,255,.28);margin-top:4px">incorporadas à visão do setor privado sobre os caminhos de transição climática</div>
+    </div>
+    <div style="background:rgba(248,207,64,.07);border:1px solid rgba(248,207,64,.18);border-radius:14px;padding:28px 24px">
+      <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:54px;font-weight:800;color:#f8cf40;line-height:1;letter-spacing:-.04em">~1 GtCO₂e</div>
+      <div style="font-size:14px;color:rgba(255,255,255,.6);margin-top:10px;font-weight:500">potencial de mitigação¹ em 2050</div>
+      <div style="font-size:11.5px;color:rgba(255,255,255,.28);margin-top:4px">para os setores de Mineração, Transportes, Agro e Energia</div>
+    </div>
+  </div>`;
+
+  html += buildWaterfallPotencial();
+
+  html += `<div class="ecno-section-title">Setores econômicos</div><div class="tree-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">`;
+  SETORES.forEach(s=>{
+    const arv = ARVORE[s.id];
+    const isReal = s.id==='transporte';
+    html += `<div class="pan-card${isReal?'':' disabled'}" ${isReal?`onclick="goSetor('${s.id}')"`:''}>
+      <div style="height:6px;background:${s.cor}"></div>
+      <div style="padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.4)">Setor econômico</div>
+        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:19px;font-weight:800;color:#fff">${arv.nome}</div>
+        ${isReal?'':'<span style="font-size:10.5px;color:rgba(255,255,255,.35)">fora do fluxo de teste</span>'}
+      </div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="ecno-section-title">Vetores transversais</div><div class="tree-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">`;
+  CROSS_CUTTING.forEach(cc=>{
+    const isReal = cc.id==='cc_bio';
+    html += `<div class="pan-card${isReal?'':' disabled'}" onclick="goCrossCutting('${cc.id}')">
+      <div style="height:6px;background:#3bbcaf"></div>
+      <div style="padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.4)">Vetor transversal</div>
+        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:17px;font-weight:800;color:#fff">${cc.nome}</div>
+        ${isReal?'':'<span style="font-size:10.5px;color:rgba(255,255,255,.35)">fora do fluxo de teste</span>'}
+      </div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="foot"><b>Nota:</b> Protótipo de fluxo único do Núcleo Intersetorial do Clima (BCG + CEBDS). Apenas a alavanca "Aumento do uso do etanol" (Transporte → Rodoviário → Biocombustíveis) tem dado real, extraído da planilha de indicadores. Todo o resto é ilustrativo.</div>`;
+
+  document.getElementById('app').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// buildEmissoesChart(setorId) — waterfall de emissões (adaptado do
+// workbench setor-transporte.html). Estático — sem os keyframes/opacity
+// de entrada do original, que só pesavam código sem levar informação.
+// ═══════════════════════════════════════════════════════════
+function buildEmissoesChart(setorId){
+  const d = EMISSOES_SETOR[setorId];
+  if(!d) return '';
+  const sCor = (SETORES.find(x=>x.id===setorId)||{}).cor || '#3bbcaf';
+  const bau = d.base2023 + d.crescimento2050;
+  const VW=680, VH=290, GY=220, HMAX=170, SC = HMAX/bau;
+  function h(v){ return Math.max(3, Math.abs(v)*SC); }
+  const ctxX=14, ctxW=38, b1x=72, bW=82, b2x=172, b3x=288, b4x=384, b4W=58, b5x=460;
+  const b1h=h(d.base2023), b1y=GY-b1h;
+  const grH=h(d.crescimento2050);
+  const b2by=GY-b1h, b2ty=b2by-grH;
+  const redH=h(Math.abs(d.reducaoAlav)), othH=h(Math.abs(d.reducaoOther));
+  const b3y=b2ty, b4y=b3y+redH;
+  const b5h=h(d.meta2050), b5y=GY-b5h;
+  function circle(x,y,n,cy){ const cx2=x+bW/2, ry=cy||(y+(GY-y)/2);
+    return `<circle cx="${cx2}" cy="${ry}" r="13" fill="#e8d020"/><text x="${cx2}" y="${ry+4.5}" text-anchor="middle" font-size="12" font-weight="800" fill="#1a1a00" font-family="Plus Jakarta Sans,sans-serif">${n}</text>`; }
+  function valLabel(cx,y,txt,color){ return `<text x="${cx}" y="${y-8}" text-anchor="middle" font-size="13" font-weight="700" fill="${color}" font-family="Plus Jakarta Sans,sans-serif">${txt}</text>`; }
+  function dash(x1,y1,x2,y2,op='.3'){ return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(255,255,255,${op})" stroke-width="1" stroke-dasharray="5 3"/>`; }
+  function yearLabel(cx,txt){ return `<text x="${cx}" y="${GY+16}" text-anchor="middle" font-size="11" fill="rgba(255,255,255,.4)" font-family="DM Sans,sans-serif">${txt}</text>`; }
+  function capsule(cx,val){ if(!val) return '';
+    return `<rect x="${cx-22}" y="${GY+26}" width="44" height="20" rx="10" fill="${sCor}55"/><text x="${cx}" y="${GY+39}" text-anchor="middle" font-size="10.5" font-weight="700" fill="${sCor}" font-family="DM Sans,sans-serif">${val}</text>`; }
+
+  let svg=`<svg viewBox="0 0 ${VW} ${VH}" style="width:100%;max-width:680px;display:block" xmlns="http://www.w3.org/2000/svg">
+  <line x1="10" y1="${GY}" x2="${VW-10}" y2="${GY}" stroke="rgba(255,255,255,.15)" stroke-width="1"/>
+  <rect x="${ctxX}" y="${GY-HMAX*0.89}" width="${ctxW}" height="${HMAX*0.89}" rx="2" fill="rgba(136,144,168,.35)"/>
+  <rect x="${ctxX}" y="${GY-HMAX}" width="${ctxW}" height="${HMAX*0.11}" rx="2" fill="${sCor}bb"/>
+  <text x="${ctxX+ctxW/2}" y="${GY-HMAX-10}" text-anchor="middle" font-size="11" font-weight="700" fill="rgba(255,255,255,.7)" font-family="Plus Jakarta Sans,sans-serif">~2.300</text>
+  <text x="${ctxX+ctxW/2}" y="${GY-HMAX+HMAX*0.055+3}" text-anchor="middle" font-size="9" font-weight="700" fill="#fff" font-family="DM Sans,sans-serif">~11%</text>
+  <text x="${ctxX+ctxW/2}" y="${GY-HMAX*0.89/2+4}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,.5)" font-family="DM Sans,sans-serif">~89%</text>
+  ${dash(ctxX+ctxW,GY-b1h,b1x,GY-b1h)}
+  ${yearLabel(ctxX+ctxW/2,'2023')}
+  <rect x="${b1x}" y="${b1y}" width="${bW}" height="${b1h}" rx="3" fill="${sCor}"/>
+  ${valLabel(b1x+bW/2,b1y,d.base2023.toLocaleString(),'#fff')}
+  ${circle(b1x,b1y,'1',b1y+b1h*0.55)}
+  ${capsule(b1x+bW/2,d.percapita?.[0])}
+  ${yearLabel(b1x+bW/2,'2023')}
+  ${dash(b1x+bW,GY-b1h,b2x,GY-b1h)}
+  <rect x="${b2x}" y="${b2by}" width="${bW}" height="${b1h}" rx="3" fill="${sCor}"/>
+  <rect x="${b2x}" y="${b2ty}" width="${bW}" height="${grH}" rx="3" fill="#7c5cbf"/>
+  ${valLabel(b2x+bW/2,b2ty,bau.toLocaleString(),'rgba(255,255,255,.9)')}
+  ${circle(b2x,b2ty,'2',b2ty+(GY-b2ty)*0.55)}
+  ${capsule(b2x+bW/2,d.percapita?.[1])}
+  ${yearLabel(b2x+bW/2,'2050 BAU')}
+  ${dash(b2x+bW,b2ty,b3x,b2ty)}
+  ${dash(b3x+bW,b3y,b4x,b4y-6)}
+  <rect x="${b3x}" y="${b3y}" width="${bW}" height="${redH}" rx="3" fill="rgba(40,160,60,.55)"/>
+  ${valLabel(b3x+bW/2,b3y,d.reducaoAlav.toLocaleString(),'#6edb6e')}
+  ${circle(b3x,b3y,'3',b3y+redH*0.5)}
+  ${yearLabel(b3x+bW/2,'2050')}
+  <rect x="${b4x}" y="${b4y}" width="${b4W}" height="${othH}" rx="3" fill="rgba(136,144,168,.4)"/>
+  <text x="${b4x+b4W/2}" y="${b4y-6}" text-anchor="middle" font-size="10" fill="rgba(255,255,255,.5)" font-family="Plus Jakarta Sans,sans-serif">${d.reducaoOther}</text>
+  <circle cx="${b4x+b4W/2}" cy="${b4y+othH/2}" r="11" fill="#e8d020"/>
+  <text x="${b4x+b4W/2}" y="${b4y+othH/2+4}" text-anchor="middle" font-size="11" font-weight="800" fill="#1a1a00" font-family="Plus Jakarta Sans,sans-serif">4</text>
+  ${dash(b4x+b4W,b4y+othH,b5x,b5y,'.2')}
+  <rect x="${b5x}" y="${b5y}" width="${bW}" height="${b5h}" rx="3" fill="${sCor}"/>
+  ${valLabel(b5x+bW/2,b5y,d.meta2050.toLocaleString(),'#fff')}
+  ${circle(b5x,b5y,'5',b5y+b5h*0.55)}
+  ${capsule(b5x+bW/2,d.percapita?.[2])}
+  ${yearLabel(b5x+bW/2,'2050 meta')}
+</svg>`;
+
+  const legendItems=[
+    { color:sCor, label:ARVORE[setorId]?.nome||setorId },
+    { color:'#7c5cbf', label:'Aumento pelo crescimento da demanda' },
+    { color:'rgba(40,160,60,.7)', label:'Redução via alavancas de descarbonização' },
+    { color:'rgba(136,144,168,.6)', label:'Outras reduções' },
+  ];
+  let legend='<div style="display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.07)">';
+  legendItems.forEach(it=>{ legend+=`<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:rgba(255,255,255,.55)"><div style="width:11px;height:11px;border-radius:2px;background:${it.color};flex-shrink:0"></div>${it.label}</div>`; });
+  legend+='</div>';
+
+  return `<div style="background:#0b1622;border-radius:12px;padding:22px 26px;margin-bottom:16px;border:1px solid rgba(255,255,255,.06)">
+    <div style="font-size:9.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:3px">Projeção de emissões · Estudo das Coalizões</div>
+    <div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:2px">${d.titulo}</div>
+    <div style="font-size:11px;color:rgba(255,255,255,.35);margin-bottom:16px">${d.subtitulo}</div>
+    ${svg}
+    ${legend}
+    <div style="font-size:10.5px;color:rgba(255,255,255,.22);margin-top:10px">Fonte: ${d.fonte}</div>
+  </div>`;
+}
+
+// buildContextoTransporte() — cards de contexto ao lado do gráfico +
+// funil "90 mapeadas → 15 priorizadas" (adaptado de
+// buildEmissoesComContexto('transporte') do workbench). Conteúdo real do
+// estudo da Coalizão dos Transportes; só as animações de entrada foram
+// removidas.
+function buildContextoTransporte(){
+  const cards=[
+    {cor:'#3bbcaf',titulo:'Baseline 2023',
+     texto:'Emissões atuais do setor, concentradas majoritariamente no modal rodoviário'},
+    {cor:'#7c5cbf',titulo:'Cenário de inação em 2050',
+     texto:'Sem ação, o crescimento da demanda levaria as emissões a aumentar de forma expressiva, ainda que a pegada per capita permaneça inferior à de países como EUA e França'},
+    {cor:'rgba(40,160,60,.9)',titulo:'Redução via 3 vetores críticos',
+     texto:'Potencial de descarbonização mapeado em alavancas agrupadas em três grandes vetores, com potencial relevante de redução frente ao cenário de inação'},
+    {cor:'rgba(136,144,168,.7)',titulo:'Demais alavancas',
+     texto:'Eficiência e otimização com <strong>alta viabilidade de curto prazo</strong> e menor potencial de redução absoluto'},
+    {cor:'#3bbcaf',titulo:'Emissões residuais 2050',
+     texto:'Parcela da frota que permanece dependente de fósseis — inovações em larga escala serão necessárias para o zero líquido'},
+  ];
+  const cardsHtml=cards.map((p,i)=>`
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-left:3px solid ${p.cor};border-radius:6px;padding:10px 12px;flex:1">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
+        <div style="width:19px;height:19px;border-radius:50%;background:#e8d020;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:10px;font-weight:800;color:#1a1a00">${i+1}</span></div>
+        <div style="font-size:11.5px;font-weight:700;color:#fff;flex:1">${p.titulo}</div>
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,.52);line-height:1.55">${p.texto}</div>
+    </div>`).join('');
+
+  return `<div style="display:grid;grid-template-columns:3fr 2fr;gap:16px;margin-bottom:0;align-items:stretch">
+      <div>${buildEmissoesChart('transporte')}</div>
+      <div style="display:flex;flex-direction:column;gap:8px;height:100%">${cardsHtml}</div>
+    </div>
+    <div style="background:rgba(40,160,60,.1);border:1px solid rgba(40,160,60,.35);border-radius:12px;padding:22px 28px 24px;margin-top:12px;margin-bottom:16px">
+      <div style="font-size:14.5px;color:rgba(255,255,255,.72);line-height:1.7;text-align:center;margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid rgba(40,160,60,.22)">
+        Ao longo do trabalho, foram mapeadas 90 alavancas de descarbonização para o setor. As de maior impacto foram reunidas em três grandes vetores: <strong style="color:#fff">mudança na matriz de transportes, biocombustíveis e eletrificação/Power-to-X</strong>, que juntos concentram cerca de ~70% do potencial de redução de emissões do setor. Agora, nesse novo ciclo de acompanhamento, foram selecionadas alavancas prioritárias, representando ~60% desse potencial e que agora serão acompanhadas
+      </div>
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:26px;justify-content:center;text-align:center">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+          <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:38px;font-weight:800;color:#fff;line-height:1">90</span>
+          <span style="font-size:12.5px;color:rgba(255,255,255,.5);line-height:1.3">alavancas mapeadas</span>
+        </div>
+        <span style="font-size:22px;color:rgba(40,160,60,.55)">&gt;</span>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:center">
+          ${['alto impacto no curto prazo','cobertura de todos os modais e elos da cadeia'].map(c=>`<span style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:7px 16px;font-size:11.5px;color:rgba(255,255,255,.6);text-align:center;line-height:1.35">${c}</span>`).join('')}
+        </div>
+        <span style="font-size:22px;color:rgba(40,160,60,.55)">&gt;</span>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+          <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:38px;font-weight:800;color:#28a03c;line-height:1">15</span>
+          <span style="font-size:12.5px;color:rgba(110,200,125,.9);line-height:1.3">alavancas priorizadas<br>nesse primeiro ciclo</span>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:24px">
+        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(40,160,60,.16);border:1px solid rgba(40,160,60,.4);border-radius:20px;padding:8px 18px;font-size:11.5px;font-weight:600;color:rgba(150,220,160,.95)">as alavancas prioritárias estão organizadas nos modais abaixo ↓</span>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// TELA: Setor (Transporte)
+// ═══════════════════════════════════════════════════════════
+function renderSetor(setorId){
+  const s = ARVORE[setorId];
+  const meta = SECTOR_META[setorId] || {desc:'',stats:[]};
+  const em = EMISSOES_SETOR[setorId];
+  const sCor = (SETORES.find(x=>x.id===setorId)||{}).cor || '#3bbcaf';
+
+  let html = buildBreadcrumb([{label:'Panorama',onclick:"goHome()"},{label:s.nome}]);
+
+  html += `<div style="border-radius:16px;overflow:hidden;margin-bottom:24px;background:linear-gradient(135deg,#0a1a2e,#0f2d1a);padding:36px 40px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:10px">Setor econômico</div>
+    <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:38px;font-weight:800;color:#fff;letter-spacing:-.03em;line-height:1.05;margin:0 0 14px">${s.nome}</h2>
+    <p style="font-size:14.5px;color:rgba(255,255,255,.75);line-height:1.65;margin:0 0 22px;max-width:760px">${meta.desc}</p>
+    <div style="display:flex;gap:24px;flex-wrap:wrap">
+      ${meta.stats.map(([val,label])=>`<div style="border-left:2px solid rgba(255,255,255,.25);padding-left:14px">
+        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:800;color:#fff;line-height:1">${val}</div>
+        <div style="font-size:11.5px;color:rgba(255,255,255,.5);margin-top:3px">${label}</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+
+  if(em){
+    html += buildContextoTransporte();
+  }
+
+  html += `<div class="ecno-section-title">${s.labelModal==='Modal'?'Modais':s.labelModal+'s'}</div><div class="tree-grid">`;
+  s.modais.forEach(m=>{
+    const nAlav = m.vetores.flatMap(v=>v.alavancaIds).length;
+    const isReal = m.id==='rodoviario';
+    html += `<div class="tree-card${isReal?'':' disabled'}" ${isReal?`onclick="goModal('${setorId}','${m.id}')"`:''}>
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${sCor}"></div>
+      <div class="tc-level">${s.labelModal}</div>
+      <div class="tc-nome">${m.nome}</div>
+      <div class="tc-stats">
+        <span class="tc-stat">${m.vetores.length} macro-tema${m.vetores.length!==1?'s':''}</span>
+        <span class="tc-stat">${nAlav} alavanca${nAlav!==1?'s':''}</span>
+      </div>
+      ${isReal?'<span class="tc-arrow">›</span>':'<span class="tc-tag-fora">fora do fluxo</span>'}
+    </div>`;
+  });
+  html += `</div>`;
+
+  document.getElementById('app').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// TELA: Modal (Rodoviário)
+// ═══════════════════════════════════════════════════════════
+function renderModal(setorId, modalId){
+  const s = ARVORE[setorId];
+  const m = s.modais.find(x=>x.id===modalId);
+
+  let html = buildBreadcrumb([
+    {label:'Panorama',onclick:'goHome()'},
+    {label:s.nome,onclick:`goSetor('${setorId}')`},
+    {label:m.nome}
+  ]);
+  html += `<div class="nivel-header">
+    <div class="nh-level">${s.labelModal}</div>
+    <h2>${m.nome}</h2>
+    <div class="nh-sub">Selecione um macro-tema para ver as alavancas</div>
+  </div>`;
+  html += `<div class="ecno-section-title">Macro-temas</div><div class="tree-grid">`;
+  m.vetores.forEach(v=>{
+    const isReal = v.id==='biocombust_rod';
+    html += `<div class="tree-card${isReal?'':' disabled'}" ${isReal?`onclick="goVetor('${setorId}','${modalId}','${v.id}')"`:''}>
+      <div class="tc-level">Macro-tema</div>
+      <div class="tc-nome">${v.nome}</div>
+      <div class="tc-stats"><span class="tc-stat">${v.alavancaIds.length} alavanca${v.alavancaIds.length!==1?'s':''}</span></div>
+      ${isReal?'<span class="tc-arrow">›</span>':'<span class="tc-tag-fora">fora do fluxo</span>'}
+    </div>`;
+  });
+  html += `</div>`;
+  document.getElementById('app').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// TELA: Vetor / Macro-tema (Biocombustíveis)
+// ═══════════════════════════════════════════════════════════
+function renderVetor(setorId, modalId, vetorId){
+  const s = ARVORE[setorId];
+  const m = s.modais.find(x=>x.id===modalId);
+  const v = m.vetores.find(x=>x.id===vetorId);
+  const alavs = v.alavancaIds.map(id=>ALAVANCAS.find(x=>x.id===id)).filter(Boolean);
+
+  let html = buildBreadcrumb([
+    {label:'Panorama',onclick:'goHome()'},
+    {label:s.nome,onclick:`goSetor('${setorId}')`},
+    {label:m.nome,onclick:`goModal('${setorId}','${modalId}')`},
+    {label:v.nome}
+  ]);
+  html += `<div class="nivel-header"><div class="nh-level">Macro-tema</div><h2>${v.nome}</h2></div>`;
+  html += `<div class="ecno-section-title">Alavancas</div><div class="alav-list">`;
+  alavs.forEach(a=>{
+    const isReal = a.id==='t_etanol';
+    html += `<div class="ali${isReal?'':' disabled'}" ${isReal?`onclick="goDetalhe('${setorId}','${modalId}','${vetorId}','${a.id}')"`:''}>
+      <div class="ali-body">
+        <div class="ali-nome">${a.nomeDashboard || a.id}</div>
+        ${isReal ? '' : `<span class="ali-tag">dado ainda não disponível</span>`}
+      </div>
+      ${isReal?'<span class="ali-arr">›</span>':''}
+    </div>`;
+  });
+  html += `</div>`;
+  document.getElementById('app').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// TELA: Detalhe da Alavanca (tripé) — "Aumento do uso do etanol"
+// ═══════════════════════════════════════════════════════════
+// Cards compactos do tripé — SÓ navegam para a tela do indicador (goIndicador).
+// Não expandem mais inline (correção pedida pelo usuário). Sucesso mantém o
+// chip de status; Preditivo não tem chip (nunca teve, DEC-CMP-002/003).
+function buildKpiTripeCardSucesso(aid,k){
+  return `<div class="kpi-tripe" onclick="goIndicador('${aid}','${k.id}')">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <div class="kpi-tripe-nome">${k.nomeDashboard||k.nome}</div>
+      ${chip(k.status)}
+    </div>
+  </div>`;
+}
+function buildKpiTripeCardPreditivo(aid,k){
+  return `<div class="kpi-tripe" onclick="goIndicador('${aid}','${k.id}')">
+    <div class="kpi-tripe-nome">${k.nomeDashboard||k.nome}</div>
+  </div>`;
+}
+function buildBalanco(alavancaId, kpiSucesso, habs){
+  let html = `<div class="detail-balance">
+    <div class="bal-row"><div class="bal-row-label">Indicadores de sucesso</div><div class="bal-chips">`;
+  html += kpiSucesso.length
+    ? kpiSucesso.map(k=>`<span class="bal-item" title="${k.nomeDashboard||k.nome}" onclick="goIndicador('${alavancaId}','${k.id}')">${chip(k.status)}</span>`).join('')
+    : `<span class="bal-empty">Nenhum indicador definido</span>`;
+  html += `</div></div>
+    <div class="bal-row"><div class="bal-row-label">Ações dos habilitadores</div><div class="bal-chips">`;
+  let acoesHtml='';
+  habs.forEach((grupo,gi)=>{
+    grupo.acoes.forEach((ac,ai)=>{
+      acoesHtml += `<span class="bal-item" title="${ac.nome}" onclick="goAcao('${alavancaId}',${gi},${ai})">${statusBadgeAcao(ac.fase,ac.subnivel)}</span>`;
+    });
+  });
+  html += acoesHtml || `<span class="bal-empty">Nenhuma ação definida</span>`;
+  html += `</div></div></div>`;
+  return html;
+}
+function renderDetalhe(id){
+  const a = ALAVANCAS.find(x=>x.id===id);
+  if(!a || !a.kpis) return;
+  const kpiSucesso   = a.kpis.filter(k=>k.tipo==='resultado');
+  const kpiPreditivo = a.kpis.filter(k=>k.tipo==='preditivo');
+  const habs = a.habilitadores;
+
+  let html = buildBreadcrumb([
+    {label:'Panorama',onclick:'goHome()'},
+    {label:'Transporte',onclick:"goSetor('transporte')"},
+    {label:'Rodoviário',onclick:"goModal('transporte','rodoviario')"},
+    {label:'Biocombustíveis',onclick:"goVetor('transporte','rodoviario','biocombust_rod')"},
+    {label:a.nomeDashboard||a.nome}
+  ]);
+
+  html += `<div class="detail-header">
+    <button class="back-btn" onclick="goVetor('transporte','rodoviario','biocombust_rod')">← Voltar</button>
+    <h2>${a.nome}</h2>
+  </div>`;
+
+  html += buildBalanco(a.id, kpiSucesso, habs);
+
+  html += `<div class="tripe-grid">`;
+
+  html += `<div class="tripe-col tc-sucesso">
+    <div class="tripe-head h-sucesso">
+      <div class="th-label">Indicadores de sucesso</div>
+    </div>
+    <div class="tripe-body">${kpiSucesso.map(k=>buildKpiTripeCardSucesso(a.id,k)).join('')}</div>
+  </div>`;
+
+  html += `<div class="tripe-col tc-preditivo">
+    <div class="tripe-head h-preditivo">
+      <div class="th-label">Indicadores preditivos</div>
+    </div>
+    <div class="tripe-body">${kpiPreditivo.map(k=>buildKpiTripeCardPreditivo(a.id,k)).join('')}</div>
+  </div>`;
+
+  html += `<div class="tripe-col tc-hab">
+    <div class="tripe-head h-hab" onclick="scrollParaHabilitadores()" style="cursor:pointer">
+      <div class="th-label">Habilitadores</div>
+    </div>
+    <div class="tripe-body">`;
+  habs.forEach((grupo,gi)=>{
+    html += `<div class="hab-group"><div class="hab-group-title">${grupo.nome}</div><div class="hab-acoes">`;
+    grupo.acoes.forEach((acaoItem,ai)=>{
+      html += `<div class="hab-acao-row" onclick="event.stopPropagation();goAcao('${a.id}',${gi},${ai})">
+        <span class="hab-acao-nome">${acaoItem.nome}</span>
+        ${statusBadgeAcao(acaoItem.fase,acaoItem.subnivel)}
+        <span class="hab-acao-chevron">›</span>
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+  html += `</div></div>`;
+
+  html += `</div>`; // /tripe-grid
+
+  document.getElementById('app').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// TELA: um único Indicador (Sucesso ou Preditivo) — página isolada.
+// Não lista os outros indicadores junto (correção pedida pelo usuário:
+// cada um é uma página própria, não uma lista concentrada).
+// ═══════════════════════════════════════════════════════════
+function renderIndicador(alavancaId, kpiId){
+  const a = ALAVANCAS.find(x=>x.id===alavancaId);
+  if(!a || !a.kpis) return;
+  const k = a.kpis.find(x=>x.id===kpiId);
+  if(!k) return;
+
+  let html = buildBreadcrumb([
+    {label:'Panorama',onclick:'goHome()'},
+    {label:'Transporte',onclick:"goSetor('transporte')"},
+    {label:'Rodoviário',onclick:"goModal('transporte','rodoviario')"},
+    {label:'Biocombustíveis',onclick:"goVetor('transporte','rodoviario','biocombust_rod')"},
+    {label:a.nomeDashboard||a.nome,onclick:'goVoltarDetalhe()'},
+    {label:k.nomeDashboard||k.nome}
+  ]);
+  html += `<button class="back-btn" onclick="goVoltarDetalhe()">← Voltar à alavanca</button>`;
+  html += `<div class="nivel-header">
+    <h2>${k.nomeDashboard||k.nome}</h2>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px">
+      ${k.nome && k.nome!==(k.nomeDashboard||k.nome) ? `<div class="nh-sub" style="margin-top:0">${k.nome}</div>` : ''}
+      ${k.unidade ? `<span class="unidade-badge">${k.unidade}</span>` : ''}
+    </div>
+  </div>`;
+  if(k.tipo==='resultado') html += `<div style="margin-bottom:18px">${chip(k.status)}</div>`;
+
+  html += `<div class="kpi-item" style="max-width:640px">
+    <div class="kpi-item-body open" style="border-top:none">
+      <div class="chart-wrap">${trajeChart(k)}</div>
+      <div class="chart-legend">
+        <span class="cl-item"><span class="cl-dot realizado"></span>Realizado</span>
+        ${(k.metas||[]).map(m=>`<span class="cl-item"><span class="cl-dot-round" style="background:${m.cor}"></span>${m.label}</span>`).join('')}
+      </div>
+      <div class="kpi-fonte">Fonte: ${k.fonte}<span class="cadencia">${k.cadencia}</span></div>
+      ${k.footnote ? `<div class="kpi-footnote">${k.footnote}</div>` : ''}
+    </div>
+  </div>`;
+  document.getElementById('app').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// TELA: Vetor Transversal — Biocombustíveis
+// Só esta página do vetor foi integrada (workbench 10, "página específica
+// do vetor", DEC-VT-3 — mudanças aqui não valem para Eletrificação). Teses
+// não são renderizadas (a própria página de origem já não as mostra,
+// DEC-VT-CONT-008); só as Ações dentro dos 4 grupos de Habilitadores do
+// Vetor aparecem, e só UMA delas navega de verdade (dado real do Excel);
+// as outras 10 mostram toast ao clicar.
+// ═══════════════════════════════════════════════════════════
+function buildAcaoCardVT(ccId, grupoIdx, a, idx){
+  const {fase,subnivel} = parseStatusKey(a.statusKey);
+  const onclick = a.real ? `goAcaoVetor('${ccId}',${grupoIdx},${idx})` : `toast()`;
+  return `<div class="acao-card" onclick="${onclick}">
+    <div class="acao-nome">${a.nome}</div>
+    ${statusBadgeAcao(fase,subnivel)}
+    <span class="acao-seta">›</span>
+  </div>`;
+}
+function renderVetorTransversal(ccId){
+  const cc = CROSS_CUTTING.find(x=>x.id===ccId);
+  if(!cc || !cc.habilitadoresVetor) return;
+  const meta = CC_META[ccId] || {desc:[]};
+
+  let html = buildBreadcrumb([{label:'Panorama',onclick:'goHome()'},{label:cc.nome}]);
+
+  html += `<div style="border-radius:16px;overflow:hidden;margin-bottom:24px;background:linear-gradient(135deg,#0a1a2e,#0f2d1a);padding:36px 40px">
+    <div style="display:inline-block;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:4px 10px;border:1px solid rgba(59,188,175,.5);border-radius:6px;color:#3bbcaf;margin-bottom:14px">Vetor transversal</div>
+    <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:36px;font-weight:800;color:#fff;letter-spacing:-.03em;line-height:1.1;margin:0 0 16px">${cc.nome}</h2>
+    ${(meta.desc||[]).map((p,i,arr)=>`<p style="font-size:14.5px;color:rgba(255,255,255,.75);line-height:1.65;margin:0${i<arr.length-1?' 0 10px':''}">${p}</p>`).join('')}
+  </div>`;
+
+  html += `<div class="ecno-section-title">Habilitadores do Vetor</div>`;
+  cc.habilitadoresVetor.forEach((grupo,gi)=>{
+    const acoesHtml = (grupo.acoes||[]).map((a,ai)=>buildAcaoCardVT(ccId,gi,a,ai)).join('');
+    html += `<div class="habgrupo-card" style="border-top-color:${grupo.cor}">
+      <div class="habgrupo-titulo">${grupo.nome}</div>
+      <p class="habgrupo-desc">${grupo.descricao}</p>
+      <div class="acoes-lista">${acoesHtml}</div>
+    </div>`;
+  });
+
+  document.getElementById('app').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// TELA: Ação — reaproveitada por dois fluxos: dentro de uma alavanca
+// (Habilitadores → Ação) e dentro de um Vetor Transversal (Habilitadores
+// do Vetor → Ação). Mesmo componente visual (ac-item/statusBadge/
+// statusTracker); só a origem do dado e o botão "Voltar" mudam.
+// ═══════════════════════════════════════════════════════════
+function renderAcao(route){
+  let breadcrumbItems, backOnclick, grupoNome, acao;
+
+  if(route.origem==='vetor'){
+    const cc = CROSS_CUTTING.find(x=>x.id===route.ccId);
+    if(!cc || !cc.habilitadoresVetor) return;
+    const grupo = cc.habilitadoresVetor[route.grupoIdx];
+    const raw = grupo.acoes[route.acaoIdx];
+    const {fase,subnivel} = parseStatusKey(raw.statusKey);
+    acao = { nome:raw.nome, fase, subnivel, membros:raw.membros||[], pontoContato:raw.pontoContato||null, descricaoStatus:raw.descricaoStatus||'' };
+    grupoNome = grupo.nome;
+    backOnclick = `goCrossCutting('${cc.id}')`;
+    breadcrumbItems = [
+      {label:'Panorama',onclick:'goHome()'},
+      {label:cc.nome,onclick:backOnclick},
+      {label:'Ação'}
+    ];
+  } else {
+    const a = ALAVANCAS.find(x=>x.id===route.alavancaId);
+    if(!a || !a.habilitadores) return;
+    const grupo = a.habilitadores[route.grupoIdx];
+    acao = grupo.acoes[route.acaoIdx];
+    grupoNome = grupo.nome;
+    backOnclick = 'goVoltarDetalhe()';
+    breadcrumbItems = [
+      {label:'Panorama',onclick:'goHome()'},
+      {label:'Transporte',onclick:"goSetor('transporte')"},
+      {label:'Rodoviário',onclick:"goModal('transporte','rodoviario')"},
+      {label:'Biocombustíveis',onclick:"goVetor('transporte','rodoviario','biocombust_rod')"},
+      {label:a.nomeDashboard||a.nome,onclick:backOnclick},
+      {label:'Ação'}
+    ];
+  }
+
+  let html = buildBreadcrumb(breadcrumbItems);
+  html += `<button class="back-btn" onclick="${backOnclick}">← Voltar</button>`;
+  html += `<div class="nivel-header"><div class="nh-level">Habilitador · ${grupoNome}</div><h2>${acao.nome}</h2></div>`;
+
+  html += `<div class="ac-item">
+    <div class="ac-item-head">
+      <div class="ac-nome">${acao.nome}</div>
+      ${statusBadge(acao.fase, acao.subnivel)}
+    </div>
+    ${statusTracker(acao.fase, acao.subnivel)}
+    <div class="ac-grid">
+      <div><div class="ab-label">Membros / entidades participantes</div>${renderMembros(acao.membros)}</div>
+      <div><div class="ab-label">Ponto de contato</div>${renderContato(acao.pontoContato)}</div>
+    </div>
+    ${renderDescricao(acao.descricaoStatus)}
+  </div>`;
+
+  document.getElementById('app').innerHTML = html;
+}
+
+// Render inicial
+render();
+</script>
+</body>
+</html>
